@@ -21,11 +21,35 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework.routers import DefaultRouter, SimpleRouter
+from apps.authentication.views import AuthViewSet
+from apps.organizations.views import OrganizationViewSet, OrganizationMemberViewSet
+from apps.projects.views import ProjectViewSet
+from apps.chatbots.views import ChatbotViewSet
+from apps.knowledge_base.views import KnowledgeBaseViewSet, DocumentViewSet
+from apps.conversations.views import ConversationViewSet, MessageViewSet, FeedbackViewSet
+from apps.analytics.views import AnalyticsViewSet
+
+# Create router
+router = DefaultRouter()
+router = SimpleRouter(trailing_slash=False)
+
+# Register viewsets
+router.register(r'auth', AuthViewSet, basename='auth')
+router.register(r'organizations', OrganizationViewSet, basename='organization')
+router.register(r'organization-members', OrganizationMemberViewSet, basename='organization-member')
+router.register(r'projects', ProjectViewSet, basename='project')
+router.register(r'chatbots', ChatbotViewSet, basename='chatbot')
+router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='knowledge-base')
+router.register(r'documents', DocumentViewSet, basename='document')
+router.register(r'conversations', ConversationViewSet, basename='conversation')
+router.register(r'messages', MessageViewSet, basename='message')
+router.register(r'feedback', FeedbackViewSet, basename='feedback')
+router.register(r'analytics', AnalyticsViewSet, basename='analytics')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
- 
-
+    path('api/v1/', include(router.urls)),
 ]
 
 # Serve media files in development

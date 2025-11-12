@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # Third party
     'rest_framework',
     'corsheaders',
+    'rest_framework_simplejwt',
     
     # Local apps
     'apps.authentication',
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
     'apps.chatbots',
     'apps.knowledge_base',
     'apps.conversations',
+    'apps.analytics',
     
 ]
 
@@ -137,3 +139,9 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'authentication.User'
+
+APPEND_SLASH = False
+
+REST_FRAMEWORK = {
+    'DEFAULT_ROUTER_CLASS': 'rest_framework.routers.SimpleRouter',
+}
