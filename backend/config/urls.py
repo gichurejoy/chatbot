@@ -32,10 +32,9 @@ from apps.analytics.views import AnalyticsViewSet
 
 # Create router
 router = DefaultRouter()
-router = SimpleRouter(trailing_slash=False)
 
 # Register viewsets
-router.register(r'auth', AuthViewSet, basename='auth')
+router.register(r'auth', AuthViewSet, basename='auth')   
 router.register(r'organizations', OrganizationViewSet, basename='organization')
 router.register(r'organization-members', OrganizationMemberViewSet, basename='organization-member')
 router.register(r'projects', ProjectViewSet, basename='project')
