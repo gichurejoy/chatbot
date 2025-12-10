@@ -1,95 +1,236 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { DatabaseIcon, FileTextIcon, UploadIcon, LinkIcon, SearchIcon, FolderIcon, FileIcon, TrashIcon, DownloadIcon, PlusIcon, CalendarIcon, MessageSquareIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { Card, CardContent, CardHeader } from '../components/ui/Card'
+import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
+import {
+  DatabaseIcon,
+  FileTextIcon,
+  UploadIcon,
+  LinkIcon,
+  SearchIcon,
+  FolderIcon,
+  FileIcon,
+  TrashIcon,
+  DownloadIcon,
+  PlusIcon,
+  CalendarIcon,
+  MessageSquareIcon,
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+} from 'lucide-react'
+import { KnowledgeBasesAPI, DocumentsAPI } from '../services/api'
+
+interface KnowledgeBase {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  access_level: string;
+  project: string;
+  project_name: string;
+  document_count: number;
+  total_size: string;
+  chunk_size: number;
+  enable_ocr: boolean;
+  auto_process: boolean;
+  enable_versioning: boolean;
+  created_at: string;
+  updated_at: string;
+  documents?: Document[];
+}
+
+interface Document {
+  id: string;
+  name: string;
+  file_type: string;
+  file_size: number;
+  file_url: string;
+  processing_status: string;
+  error_message: string | null;
+  uploaded_at: string;
+  processed_at: string | null;
+  chunk_count: number;
+  uploaded_by_email?: string;
+}
+
 export function KnowledgeBaseDetail() {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
-  const [activeTab, setActiveTab] = useState('documents');
-  const knowledgeBase = {
-    id: Number(id),
-    name: 'Product Catalog',
-    description: 'Detailed product specifications and catalog',
-    documents: 156,
-    size: '24.6 MB',
-    project: 'E-commerce Assistant',
-    lastUpdated: '3 days ago',
-    type: 'Catalog',
-    createdAt: 'May 15, 2023',
-    createdBy: 'Sarah Johnson',
-    linkedChatbots: ['Customer Support Assistant', 'Product Recommendations']
-  };
-  const tabs = [{
-    id: 'documents',
-    name: 'Documents',
-    icon: FileTextIcon
-  }, {
-    id: 'settings',
-    name: 'Settings',
-    icon: FolderIcon
-  }, {
-    id: 'chatbots',
-    name: 'Linked Chatbots',
-    icon: LinkIcon
-  }];
-  const documents = [{
-    id: 1,
-    name: 'Product Catalog - Summer 2023.pdf',
-    type: 'PDF',
-    size: '8.2 MB',
-    uploadedAt: 'June 12, 2023',
-    uploadedBy: 'Sarah Johnson'
-  }, {
-    id: 2,
-    name: 'Technical Specifications.docx',
-    type: 'DOCX',
-    size: '2.4 MB',
-    uploadedAt: 'June 10, 2023',
-    uploadedBy: 'John Doe'
-  }, {
-    id: 3,
-    name: 'Product Images Collection',
-    type: 'Folder',
-    size: '12.8 MB',
-    uploadedAt: 'June 5, 2023',
-    uploadedBy: 'Sarah Johnson'
-  }, {
-    id: 4,
-    name: 'Pricing Information.xlsx',
-    type: 'XLSX',
-    size: '1.2 MB',
-    uploadedAt: 'June 1, 2023',
-    uploadedBy: 'Michael Brown'
-  }, {
-    id: 5,
-    name: 'Customer Reviews.csv',
-    type: 'CSV',
-    size: '0.8 MB',
-    uploadedAt: 'May 28, 2023',
-    uploadedBy: 'Emily Davis'
-  }];
-  const getDocumentIcon = (type: string) => {
-    switch (type) {
-      case 'PDF':
-        return <FileTextIcon className="h-5 w-5 text-red-500" />;
-      case 'DOCX':
-        return <FileTextIcon className="h-5 w-5 text-blue-500" />;
-      case 'XLSX':
-        return <FileTextIcon className="h-5 w-5 text-green-500" />;
-      case 'CSV':
-        return <FileTextIcon className="h-5 w-5 text-orange-500" />;
-      case 'Folder':
-        return <FolderIcon className="h-5 w-5 text-yellow-500" />;
-      default:
-        return <FileIcon className="h-5 w-5 text-gray-500" />;
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('documents')
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null)
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+
+  useEffect(() => {
+    if (id) {
+      fetchKnowledgeBaseData()
     }
-  };
-  return <div className="space-y-6">
+  }, [id])
+
+  const fetchKnowledgeBaseData = async () => {
+    try {
+      setLoading(true)
+      const kbData = await KnowledgeBasesAPI.get(id!)
+      setKnowledgeBase(kbData)
+      
+      // Fetch documents
+      const docsData = await KnowledgeBasesAPI.getDocuments(id!)
+      
+      console.log('RAW DOCUMENTS API RESPONSE:', docsData)
+      
+      // ✅ Normalize API response (array OR { results: [] })
+      if (Array.isArray(docsData)) {
+        setDocuments(docsData)
+      } else if (Array.isArray((docsData as any)?.results)) {
+        setDocuments((docsData as any).results)
+      } else {
+        console.error('Unexpected documents API format:', docsData)
+        setDocuments([])
+      }
+      
+      setError('')
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch knowledge base data')
+      console.error('Error fetching knowledge base:', err)
+      setDocuments([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteDocument = async (docId: string, event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    if (!window.confirm('Are you sure you want to delete this document?')) {
+      return
+    }
+
+    try {
+      await DocumentsAPI.delete(docId)
+      setDocuments(safeDocuments.filter(doc => doc.id !== docId))
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete document')
+    }
+  }
+
+  // ✅ ABSOLUTE SAFETY BEFORE FILTERING
+  const safeDocuments = Array.isArray(documents) ? documents : []
+
+  const filteredDocuments = safeDocuments.filter(doc => {
+    const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = typeFilter === 'all' || doc.file_type === typeFilter
+    return matchesSearch && matchesType
+  })
+
+  const getStatusBadge = (status: string) => {
+    const badges: { [key: string]: { color: string; icon: any; text: string } } = {
+      'completed': { color: 'bg-green-100 text-green-700', icon: CheckCircleIcon, text: 'Completed' },
+      'processing': { color: 'bg-blue-100 text-blue-700', icon: ClockIcon, text: 'Processing' },
+      'failed': { color: 'bg-red-100 text-red-700', icon: XCircleIcon, text: 'Failed' },
+      'pending': { color: 'bg-yellow-100 text-yellow-700', icon: ClockIcon, text: 'Pending' }
+    }
+    const badge = badges[status] || badges['pending']
+    const Icon = badge.icon
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${badge.color}`}>
+        <Icon className="h-3 w-3" />
+        {badge.text}
+      </span>
+    )
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const getDocumentIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'pdf':
+        return <FileTextIcon className="h-5 w-5 text-red-500" />
+      case 'docx':
+        return <FileTextIcon className="h-5 w-5 text-blue-500" />
+      case 'xlsx':
+        return <FileTextIcon className="h-5 w-5 text-green-500" />
+      case 'csv':
+        return <FileTextIcon className="h-5 w-5 text-orange-500" />
+      default:
+        return <FileIcon className="h-5 w-5 text-gray-500" />
+    }
+  }
+
+  const tabs = [
+    { id: 'documents', name: 'Documents', icon: FileTextIcon },
+    { id: 'settings', name: 'Settings', icon: FolderIcon },
+    { id: 'chatbots', name: 'Linked Chatbots', icon: LinkIcon },
+  ]
+
+  // ✅ LOADING STATE
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // ✅ ERROR STATE
+  if (error || !knowledgeBase) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => navigate('/knowledge-base')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Back to Knowledge Bases
+        </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <p className="font-medium">Error loading knowledge base</p>
+          <p className="text-sm mt-1">{error || 'Knowledge base not found'}</p>
+          <button
+            onClick={() => navigate('/knowledge-base')}
+            className="mt-3 text-sm underline hover:no-underline"
+          >
+            Back to Knowledge Bases
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Back button */}
+      <button
+        onClick={() => navigate('/knowledge-base')}
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+      >
+        <ArrowLeftIcon className="h-4 w-4" />
+        Back to Knowledge Bases
+      </button>
+
+      {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
         <div className="flex items-center">
           <div className="h-12 w-12 rounded-md bg-blue-100 flex items-center justify-center">
@@ -105,7 +246,7 @@ export function KnowledgeBaseDetail() {
               </Badge>
             </div>
             <p className="mt-1 text-sm text-gray-500">
-              Project: {knowledgeBase.project}
+              Project: {knowledgeBase.project_name || 'N/A'}
             </p>
           </div>
         </div>
@@ -118,108 +259,168 @@ export function KnowledgeBaseDetail() {
           </Button>
         </div>
       </div>
+
       <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
         {/* Tabs */}
         <div className="w-full md:w-64 flex-shrink-0">
           <Card>
             <CardContent className="p-0">
               <nav className="flex flex-col">
-                {tabs.map(tab => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center px-4 py-3 text-sm font-medium ${activeTab === tab.id ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center px-4 py-3 text-sm font-medium ${
+                      activeTab === tab.id
+                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
                     <tab.icon className="h-5 w-5 mr-3" />
                     {tab.name}
-                  </button>)}
+                  </button>
+                ))}
               </nav>
             </CardContent>
           </Card>
         </div>
+
         {/* Content */}
         <div className="flex-1">
-          {activeTab === 'documents' && <div className="space-y-6">
+          {activeTab === 'documents' && (
+            <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-medium text-gray-900">
-                      Documents
-                    </h2>
+                    <h2 className="text-lg font-medium text-gray-900">Documents</h2>
                     <div className="flex space-x-2">
                       <div className="relative">
-                        <input type="text" placeholder="Search documents..." className="pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+                        <input
+                          type="text"
+                          placeholder="Search documents..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
                         <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                       </div>
-                      <select className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
-                        <option>All Types</option>
-                        <option>PDF</option>
-                        <option>DOCX</option>
-                        <option>XLSX</option>
-                        <option>CSV</option>
-                        <option>Folders</option>
+                      <select 
+                        className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
+                        value={typeFilter}
+                        onChange={(e) => setTypeFilter(e.target.value)}
+                      >
+                        <option value="all">All Types</option>
+                        <option value="pdf">PDF</option>
+                        <option value="docx">DOCX</option>
+                        <option value="xlsx">XLSX</option>
+                        <option value="csv">CSV</option>
                       </select>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Type
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Size
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Uploaded
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            By
-                          </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {documents.map(doc => <tr key={doc.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                {getDocumentIcon(doc.type)}
-                                <div className="ml-3 text-sm font-medium text-gray-900">
-                                  {doc.name}
+                  {filteredDocuments.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <FileTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {searchQuery || typeFilter !== 'all' 
+                          ? 'No documents found' 
+                          : 'No documents yet'}
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        {searchQuery || typeFilter !== 'all'
+                          ? 'Try adjusting your search or filters'
+                          : 'Upload documents to build your knowledge base'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Type
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Size
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Uploaded
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              By
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredDocuments.map((doc) => (
+                            <tr key={doc.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  {getDocumentIcon(doc.file_type)}
+                                  <div className="ml-3 text-sm font-medium text-gray-900">
+                                    {doc.name}
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {doc.type}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {doc.size}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {doc.uploadedAt}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {doc.uploadedBy}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex justify-end space-x-2">
-                                <Button size="sm" variant="outline" icon={<DownloadIcon className="h-4 w-4" />}>
-                                  Download
-                                </Button>
-                                <Button size="sm" variant="danger" icon={<TrashIcon className="h-4 w-4" />}>
-                                  Delete
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>)}
-                      </tbody>
-                    </table>
-                  </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">
+                                {doc.file_type}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {formatFileSize(doc.file_size)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {getStatusBadge(doc.processing_status)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {formatDate(doc.uploaded_at)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {doc.uploaded_by_email || 'Unknown'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex justify-end space-x-2">
+                                  {doc.file_url && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        window.open(doc.file_url, '_blank')
+                                      }}
+                                      icon={<DownloadIcon className="h-4 w-4" />}
+                                    >
+                                      Download
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={(e) => handleDeleteDocument(doc.id, e)}
+                                    icon={<TrashIcon className="h-4 w-4" />}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+
               <Card>
                 <CardHeader>
                   <h2 className="text-lg font-medium text-gray-900">
@@ -235,84 +436,25 @@ export function KnowledgeBaseDetail() {
                     <p className="mt-1 text-xs text-gray-400">
                       Supports PDF, DOCX, XLSX, CSV, TXT, and other text formats
                     </p>
-                    <Button variant="outline" className="mt-4" icon={<UploadIcon className="h-4 w-4" />}>
-                      Select Files
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      icon={<UploadIcon className="h-4 w-4" />}
+                      onClick={() => window.open(`http://127.0.0.1:8000/admin/knowledge_base/document/add/?knowledge_base=${id}`, '_blank')}
+                    >
+                      Upload via Admin Panel
                     </Button>
                   </div>
                   <div className="mt-4 text-xs text-gray-500">
-                    Maximum file size: 50MB. For larger files or bulk uploads,
-                    please contact support.
+                    Maximum file size: 50MB. Document upload UI will be implemented in the next phase.
                   </div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-medium text-gray-900">
-                      Recent Activity
-                    </h2>
-                    <Button variant="outline" size="sm">
-                      View All
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="divide-y divide-gray-200">
-                    {[{
-                  action: 'uploaded',
-                  user: 'Sarah Johnson',
-                  target: 'Product Catalog - Summer 2023.pdf',
-                  time: '2 days ago'
-                }, {
-                  action: 'updated',
-                  user: 'John Doe',
-                  target: 'Technical Specifications.docx',
-                  time: '3 days ago'
-                }, {
-                  action: 'deleted',
-                  user: 'Michael Brown',
-                  target: 'Old Pricing Sheet.xlsx',
-                  time: '5 days ago'
-                }, {
-                  action: 'uploaded',
-                  user: 'Emily Davis',
-                  target: 'Customer Reviews.csv',
-                  time: '1 week ago'
-                }, {
-                  action: 'created folder',
-                  user: 'Sarah Johnson',
-                  target: 'Product Images Collection',
-                  time: '1 week ago'
-                }].map((activity, index) => <div key={index} className="px-6 py-4 hover:bg-gray-50">
-                        <div className="flex items-start">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-sm">
-                            {activity.user.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm">
-                              <span className="font-medium text-gray-900">
-                                {activity.user}
-                              </span>
-                              <span className="text-gray-500">
-                                {' '}
-                                {activity.action}{' '}
-                              </span>
-                              <span className="font-medium text-gray-900">
-                                {activity.target}
-                              </span>
-                            </div>
-                            <div className="mt-1 text-xs text-gray-500 flex items-center">
-                              <CalendarIcon className="h-3 w-3 mr-1" />
-                              {activity.time}
-                            </div>
-                          </div>
-                        </div>
-                      </div>)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>}
-          {activeTab === 'settings' && <Card>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <Card>
               <CardHeader>
                 <h2 className="text-lg font-medium text-gray-900">
                   Knowledge Base Settings
@@ -329,117 +471,131 @@ export function KnowledgeBaseDetail() {
                     </h3>
                     <div className="space-y-4">
                       <div>
-                        <label htmlFor="kbName" className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700">
                           Name
                         </label>
-                        <input type="text" id="kbName" defaultValue={knowledgeBase.name} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                        <input
+                          type="text"
+                          value={knowledgeBase.name}
+                          readOnly
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50"
+                        />
                       </div>
                       <div>
-                        <label htmlFor="kbDescription" className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700">
                           Description
                         </label>
-                        <textarea id="kbDescription" rows={3} defaultValue={knowledgeBase.description} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                        <textarea
+                          rows={3}
+                          value={knowledgeBase.description || 'No description'}
+                          readOnly
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50"
+                        />
                       </div>
                       <div>
-                        <label htmlFor="kbType" className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700">
                           Type
                         </label>
-                        <select id="kbType" defaultValue={knowledgeBase.type} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                          <option>Documentation</option>
-                          <option>FAQ</option>
-                          <option>Sales</option>
-                          <option>Policies</option>
-                          <option>Catalog</option>
-                          <option>Training</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="kbProject" className="block text-sm font-medium text-gray-700">
-                          Project
-                        </label>
-                        <select id="kbProject" defaultValue={knowledgeBase.project} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                          <option>E-commerce Assistant</option>
-                          <option>Customer Support</option>
-                          <option>Internal Knowledge Base</option>
-                          <option>Sales Automation</option>
-                          <option>HR Assistant</option>
-                          <option>Technical Support</option>
-                        </select>
+                        <input
+                          type="text"
+                          value={knowledgeBase.type}
+                          readOnly
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50 capitalize"
+                        />
                       </div>
                     </div>
                   </div>
+
                   <div className="pt-6 border-t border-gray-200">
                     <h3 className="text-sm font-medium text-gray-900 mb-3">
                       Processing Settings
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-center">
-                        <input id="enableAutoUpdate" type="checkbox" defaultChecked className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                        <label htmlFor="enableAutoUpdate" className="ml-2 block text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={knowledgeBase.auto_process}
+                          disabled
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        />
+                        <label className="ml-2 block text-sm text-gray-700">
                           Automatically process new documents
                         </label>
                       </div>
                       <div className="flex items-center">
-                        <input id="enableOCR" type="checkbox" defaultChecked className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                        <label htmlFor="enableOCR" className="ml-2 block text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={knowledgeBase.enable_ocr}
+                          disabled
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        />
+                        <label className="ml-2 block text-sm text-gray-700">
                           Enable OCR for scanned documents and images
                         </label>
                       </div>
                       <div>
-                        <label htmlFor="chunkSize" className="block text-sm font-medium text-gray-700">
-                          Chunk Size
+                        <label className="block text-sm font-medium text-gray-700">
+                          Chunk Size: {knowledgeBase.chunk_size} tokens
                         </label>
-                        <select id="chunkSize" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                          <option>Small (256 tokens)</option>
-                          <option selected>Medium (512 tokens)</option>
-                          <option>Large (1024 tokens)</option>
-                          <option>Extra Large (2048 tokens)</option>
-                        </select>
                         <p className="mt-1 text-xs text-gray-500">
                           Determines how documents are split for processing
                         </p>
                       </div>
                     </div>
                   </div>
+
                   <div className="pt-6 border-t border-gray-200">
                     <h3 className="text-sm font-medium text-gray-900 mb-3">
                       Access Control
                     </h3>
                     <div className="space-y-4">
                       <div>
-                        <label htmlFor="accessLevel" className="block text-sm font-medium text-gray-700">
-                          Access Level
+                        <label className="block text-sm font-medium text-gray-700">
+                          Access Level: <span className="capitalize">{knowledgeBase.access_level}</span>
                         </label>
-                        <select id="accessLevel" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                          <option>Public (All organization members)</option>
-                          <option selected>
-                            Project (Only project members)
-                          </option>
-                          <option>Private (Only specified users)</option>
-                        </select>
                       </div>
                       <div className="flex items-center">
-                        <input id="enableVersioning" type="checkbox" defaultChecked className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                        <label htmlFor="enableVersioning" className="ml-2 block text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={knowledgeBase.enable_versioning}
+                          disabled
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        />
+                        <label className="ml-2 block text-sm text-gray-700">
                           Enable document versioning
                         </label>
                       </div>
                     </div>
                   </div>
+
                   <div className="flex justify-end space-x-3 pt-6">
-                    <Button variant="secondary">Cancel</Button>
-                    <Button variant="primary">Save Changes</Button>
+                    <Button variant="secondary" onClick={() => navigate('/knowledge-base')}>
+                      Back
+                    </Button>
+                    <Button 
+                      variant="primary"
+                      onClick={() => window.open(`http://127.0.0.1:8000/admin/knowledge_base/knowledgebase/${id}/change/`, '_blank')}
+                    >
+                      Edit in Admin Panel
+                    </Button>
                   </div>
                 </div>
               </CardContent>
-            </Card>}
-          {activeTab === 'chatbots' && <Card>
+            </Card>
+          )}
+
+          {activeTab === 'chatbots' && (
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-medium text-gray-900">
                     Linked Chatbots
                   </h2>
-                  <Button variant="primary" size="sm" icon={<PlusIcon className="h-4 w-4" />}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<PlusIcon className="h-4 w-4" />}
+                  >
                     Link New Chatbot
                   </Button>
                 </div>
@@ -447,65 +603,14 @@ export function KnowledgeBaseDetail() {
               <CardContent>
                 <div className="space-y-6">
                   <p className="text-sm text-gray-500">
-                    These chatbots are currently using this knowledge base for
-                    their responses.
+                    This feature will be implemented in the next phase. You'll be able to link chatbots to this knowledge base.
                   </p>
-                  <div className="divide-y divide-gray-200 border border-gray-200 rounded-md">
-                    {knowledgeBase.linkedChatbots.map((chatbot, index) => <div key={index} className="flex items-center justify-between p-4 hover:bg-gray-50">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center">
-                            <MessageSquareIcon className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {chatbot}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              Project: {knowledgeBase.project}
-                            </div>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          Configure
-                        </Button>
-                      </div>)}
-                  </div>
-                  <div className="pt-6">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">
-                      Link a New Chatbot
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label htmlFor="chatbotSelect" className="block text-sm font-medium text-gray-700">
-                          Select Chatbot
-                        </label>
-                        <select id="chatbotSelect" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                          <option>Order Status Bot</option>
-                          <option>Sales Assistant</option>
-                          <option>Technical Support</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="priorityLevel" className="block text-sm font-medium text-gray-700">
-                          Priority Level
-                        </label>
-                        <select id="priorityLevel" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                          <option>High - Primary knowledge source</option>
-                          <option>Medium - Supplementary knowledge</option>
-                          <option>Low - Fallback knowledge</option>
-                        </select>
-                        <p className="mt-1 text-xs text-gray-500">
-                          Determines how this knowledge base is prioritized in
-                          the chatbot's responses
-                        </p>
-                      </div>
-                      <Button variant="primary">Link Chatbot</Button>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
-            </Card>}
+            </Card>
+          )}
         </div>
       </div>
-    </div>;
+    </div>
+  )
 }

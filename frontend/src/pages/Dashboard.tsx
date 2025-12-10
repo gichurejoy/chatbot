@@ -1,37 +1,76 @@
-import React, { useState } from 'react';
+  
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Onboarding } from '../components/Onboarding';
+import { useEffect, useState } from 'react';
+import { ProjectsAPI, ChatbotsAPI, AnalyticsAPI } from '../services/api';
 import { MessageSquareIcon, TrendingUpIcon, UsersIcon, ActivityIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon, DatabaseIcon, BarChart3Icon } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 export function Dashboard() {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const stats = [{
-    name: 'Total Conversations',
-    value: '12,543',
-    change: '+12.5%',
-    changeType: 'increase',
-    icon: MessageSquareIcon
-  }, {
-    name: 'Active Chatbots',
-    value: '8',
-    change: '+2',
-    changeType: 'increase',
-    icon: ActivityIcon
-  }, {
-    name: 'Avg Response Time',
-    value: '1.2s',
-    change: '-0.3s',
-    changeType: 'increase',
-    icon: TrendingUpIcon
-  }, {
-    name: 'User Satisfaction',
-    value: '94%',
-    change: '+3%',
-    changeType: 'increase',
-    icon: UsersIcon
-  }];
+  const [stats, setStats] = useState({
+    totalConversations: 0,
+    activeChatbots: 0,
+    avgResponseTime: 0,
+    userSatisfaction: 0
+  });
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [chatbots, analytics] = await Promise.all([
+          ChatbotsAPI.list(),
+          AnalyticsAPI.overview()
+        ]);
+  
+        setStats({
+          totalConversations: analytics.total_conversations,
+          activeChatbots: analytics.active_chatbots,
+          avgResponseTime: analytics.average_response_time,
+          userSatisfaction: analytics.average_rating * 20 // Convert 1-5 to percentage
+        });
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchDashboardData();
+  }, []);
+  const statsData = [
+    {
+      name: 'Total Conversations',
+      value: stats.totalConversations.toLocaleString(),
+      change: '+12.5%',
+      changeType: 'increase',
+      icon: MessageSquareIcon
+    },
+    {
+      name: 'Active Chatbots',
+      value: stats.activeChatbots.toString(),
+      change: '+2',
+      changeType: 'increase',
+      icon: ActivityIcon
+    },
+    {
+      name: 'Avg Response Time',
+      value: `${stats.avgResponseTime.toFixed(1)}ms`,
+      change: '-0.3s',
+      changeType: 'increase',
+      icon: TrendingUpIcon
+    },
+    {
+      name: 'User Satisfaction',
+      value: `${stats.userSatisfaction.toFixed(0)}%`,
+      change: '+3%',
+      changeType: 'increase',
+      icon: UsersIcon
+    }
+  ];
   const recentActivity = [{
     id: 1,
     type: 'chatbot',
@@ -57,6 +96,9 @@ export function Dashboard() {
     time: '1 day ago',
     user: 'Admin'
   }];
+  if (loading) {
+    return <LoadingSpinner />;
+  }
   return <div className="space-y-6">
       {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -79,7 +121,7 @@ export function Dashboard() {
       </div>
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map(stat => <Card key={stat.name}>
+        {statsData.map(stat => <Card key={stat.name}>
             <CardContent className="p-6">
               <div className="flex items-center">
                 <div className="p-2 rounded-md bg-blue-100">

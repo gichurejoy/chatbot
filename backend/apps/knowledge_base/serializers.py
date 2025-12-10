@@ -1,6 +1,4 @@
-"""
-Knowledge Base Serializers
-"""
+from django.db import models
 from rest_framework import serializers
 from .models import KnowledgeBase, Document, DocumentChunk
 
@@ -9,8 +7,9 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
     """Knowledge Base Serializer"""
     
     project_name = serializers.CharField(source='project.name', read_only=True)
-    created_by_email = serializers.EmailField(source='created_by.email', read_only=True)
-    documents_count = serializers.SerializerMethodField()
+    created_by_email = serializers.EmailField(source='created_by.email', read_only=True, allow_null=True)
+    document_count = serializers.SerializerMethodField()
+    total_size = serializers.SerializerMethodField()
     
     class Meta:
         model = KnowledgeBase
@@ -18,33 +17,43 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             'id', 'project', 'project_name', 'name', 'description', 'type',
             'chunk_size', 'enable_ocr', 'auto_process',
             'access_level', 'enable_versioning',
-            'created_by', 'created_by_email', 'documents_count',
+            'created_by', 'created_by_email', 'document_count', 'total_size',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
     
-    def get_documents_count(self, obj):
+    def get_document_count(self, obj):
+        """Get total number of documents"""
         return obj.documents.count()
+    
+    def get_total_size(self, obj):
+        """Get total size of all documents in MB"""
+        total_bytes = obj.documents.aggregate(
+            total=models.Sum('file_size')
+        )['total'] or 0
+        total_mb = total_bytes / (1024 * 1024)
+        return f"{total_mb:.2f} MB"
 
 
 class DocumentSerializer(serializers.ModelSerializer):
     """Document Serializer"""
     
     knowledge_base_name = serializers.CharField(source='knowledge_base.name', read_only=True)
-    uploaded_by_email = serializers.EmailField(source='uploaded_by.email', read_only=True)
-    chunks_count = serializers.SerializerMethodField()
+    uploaded_by_email = serializers.EmailField(source='uploaded_by.email', read_only=True, allow_null=True)
+    chunk_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Document
         fields = [
-            'id', 'knowledge_base', 'knowledge_base_name', 'name', 'file_type', 'file_size', 'file_url',
-            'processing_status', 'processed_at', 'error_message',
-            'uploaded_by', 'uploaded_by_email', 'chunks_count',
+            'id', 'knowledge_base', 'knowledge_base_name', 'name', 'file_type', 
+            'file_size', 'file_url', 'processing_status', 'processed_at', 'error_message',
+            'uploaded_by', 'uploaded_by_email', 'chunk_count',
             'uploaded_at', 'updated_at'
         ]
         read_only_fields = ['id', 'uploaded_by', 'processing_status', 'processed_at', 'uploaded_at', 'updated_at']
     
-    def get_chunks_count(self, obj):
+    def get_chunk_count(self, obj):
+        """Get number of chunks for this document"""
         return obj.chunks.count()
 
 

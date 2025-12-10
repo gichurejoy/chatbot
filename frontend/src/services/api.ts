@@ -136,25 +136,44 @@ export const ProjectsAPI = {
 export const ChatbotsAPI = {
   list: () => fetchAPI('/chatbots/'),
   get: (id: string) => fetchAPI(`/chatbots/${id}/`),
-  create: (data: any) => fetchAPI('/chatbots/', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  update: (id: string, data: any) => fetchAPI(`/chatbots/${id}/`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  }),
-  delete: (id: string) => fetchAPI(`/chatbots/${id}/`, { method: 'DELETE' }),
-  chat: (id: string, message: string, sessionId?: string) => fetchAPI(`/chatbots/${id}/chat/`, {
-    method: 'POST',
-    body: JSON.stringify({ message, session_id: sessionId }),
-  }),
+  create: (data: any) => 
+    fetchAPI('/chatbots/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) => 
+    fetchAPI(`/chatbots/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) => 
+    fetchAPI(`/chatbots/${id}/`, {
+      method: 'DELETE',
+    }),
+  
+  // Chatbot-specific actions
+  chat: (id: string, data: { message: string; session_id?: string; user_identifier?: string }) =>
+    fetchAPI(`/chatbots/${id}/chat/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
   getConversations: (id: string) => fetchAPI(`/chatbots/${id}/conversations/`),
+  
   getKnowledgeBases: (id: string) => fetchAPI(`/chatbots/${id}/knowledge_bases/`),
-  linkKnowledgeBase: (id: string, knowledgeBaseId: string, priority: number) =>
+  
+  linkKnowledgeBase: (id: string, knowledgeBaseId: string, priority: number = 2) =>
     fetchAPI(`/chatbots/${id}/link_knowledge_base/`, {
       method: 'POST',
-      body: JSON.stringify({ knowledge_base: knowledgeBaseId, priority }),
+      body: JSON.stringify({
+        knowledge_base: knowledgeBaseId,
+        priority
+      }),
+    }),
+  
+  unlinkKnowledgeBase: (id: string, knowledgeBaseId: string) =>
+    fetchAPI(`/chatbots/${id}/knowledge-bases/${knowledgeBaseId}/`, {
+      method: 'DELETE',
     }),
 };
 

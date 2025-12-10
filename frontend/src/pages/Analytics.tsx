@@ -1,10 +1,39 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { BarChart3Icon, TrendingUpIcon, MessageSquareIcon, UsersIcon, ChevronDownIcon, DownloadIcon, CalendarIcon, PieChartIcon, ActivityIcon } from 'lucide-react';
+import { AnalyticsAPI } from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 export function Analytics() {
   const [dateRange, setDateRange] = useState('last30');
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const data = await AnalyticsAPI.overview();
+        setAnalytics(data);
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  const totalInteractions = analytics?.total_conversations ?? 0;
+  const avgAccuracy = analytics?.average_accuracy ?? 0;
+  const userSatisfactionPct = analytics?.average_rating ? analytics.average_rating * 20 : 0;
+  const escalationRate = analytics?.escalation_rate ?? 0;
+
   return <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
@@ -31,10 +60,10 @@ export function Analytics() {
       </div>
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Interactions" value="24,521" change="+12.5%" trend="up" icon={<MessageSquareIcon className="h-6 w-6 text-blue-600" />} />
-        <StatCard title="Avg. Accuracy" value="89.4%" change="+2.3%" trend="up" icon={<BarChart3Icon className="h-6 w-6 text-green-600" />} />
-        <StatCard title="User Satisfaction" value="92.1%" change="-0.8%" trend="down" icon={<UsersIcon className="h-6 w-6 text-purple-600" />} />
-        <StatCard title="Escalation Rate" value="8.2%" change="-3.1%" trend="up" icon={<TrendingUpIcon className="h-6 w-6 text-orange-600" />} />
+        <StatCard title="Total Interactions" value={totalInteractions.toLocaleString()} change="+12.5%" trend="up" icon={<MessageSquareIcon className="h-6 w-6 text-blue-600" />} />
+        <StatCard title="Avg. Accuracy" value={`${avgAccuracy.toFixed(1)}%`} change="+2.3%" trend="up" icon={<BarChart3Icon className="h-6 w-6 text-green-600" />} />
+        <StatCard title="User Satisfaction" value={`${userSatisfactionPct.toFixed(1)}%`} change="-0.8%" trend="down" icon={<UsersIcon className="h-6 w-6 text-purple-600" />} />
+        <StatCard title="Escalation Rate" value={`${escalationRate.toFixed(1)}%`} change="-3.1%" trend="up" icon={<TrendingUpIcon className="h-6 w-6 text-orange-600" />} />
       </div>
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
